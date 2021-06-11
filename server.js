@@ -1,22 +1,19 @@
-const PORT = process.env.PORT || 3000;
-const express = require('express')
 const { Server } = require('ws');
-const INDEX = '/index.html';
-
-const server = express()
-  .use((req, res) => res.sendFile(INDEX, { root: __dirname }))
-  .listen(PORT, () => console.log(`Listening on ${PORT}`));
-
 const wss = new Server({ server });
-
-wss.on('connection', (ws) => {
-  console.log('Client connected');
-  ws.on('close', () => console.log('Client disconnected'));
+let userCount = [];
+let server = wss.createServer({
+  debug: true
 });
 
-setInterval(() => {
-  wss.clients.forEach((client) => {
-    client.send(new Date().toTimeString());
+server.addListener("connection", function(conn){
+  server.broadcast("userCount " + ++userCount);
+  conn.addListener("message", function(message){
+    server.broadcast(message);
   });
-}, 1000);
+});
 
+server.addListener("close", function(conn){
+  server.broadcast("userCount " + --userCount);
+});
+
+server.listen(3000, "localhost");
