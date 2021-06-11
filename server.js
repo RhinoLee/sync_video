@@ -1,3 +1,6 @@
+const PORT = process.env.PORT || 3000;
+const express = require('express')
+const INDEX = '/index.html';
 const { Server } = require('ws');
 const wss = new Server({ server });
 let userCount = [];
@@ -16,4 +19,8 @@ server.addListener("close", function(conn){
   server.broadcast("userCount " + --userCount);
 });
 
-server.listen(3000, "localhost");
+server.listen(PORT, "localhost");
+
+const server = express()
+  .use((req, res) => res.sendFile(INDEX, { root: __dirname }))
+  .listen(PORT, () => console.log(`Listening on ${PORT}`));
