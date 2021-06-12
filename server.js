@@ -15,15 +15,11 @@ wss.on('connection', (ws) => {
 
   ws.send("userCount " + ++userCount);
 
-  ws.on("message", function(message){
-    //取得所有連接中的 client
-    let clients = wss.clients
-
-    //做迴圈，發送訊息至每個 client
-    clients.forEach(client => {
-        client.send(message)
-    })
-  });
+  setInterval(() => {
+    wss.clients.forEach((client) => {
+      client.send(new Date().toTimeString());
+    });
+  }, 1000);
 
   ws.on('close', () => {
     ws.send("userCount " + --userCount);
