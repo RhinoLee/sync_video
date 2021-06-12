@@ -16,23 +16,17 @@ wss.on('connection', (ws) => {
   ws.send("userCount " + ++userCount);
 
   ws.on("message", function(message){
-    ws.send(message);
+    //取得所有連接中的 client
+    let clients = wss.clients
+
+    //做迴圈，發送訊息至每個 client
+    clients.forEach(client => {
+        client.send(message)
+    })
   });
 
   ws.on('close', () => {
     ws.send("userCount " + --userCount);
   })
 });
-
-
-// server.addListener("connection", function(conn){
-//   server.broadcast("userCount " + ++userCount);
-//   conn.addListener("message", function(message){
-//     server.broadcast(message);
-//   });
-// });
-
-// server.addListener("close", function(conn){
-//   server.broadcast("userCount " + --userCount);
-// });
 

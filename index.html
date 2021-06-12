@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
     <style>
-      .inactive {
+      /* .inactive {
         display: none;
       }
       .active {
         display: block;
-      }
+      } */
     </style>
   </head>
   <body>
@@ -21,80 +21,87 @@
 
     <div id="room" class="inactive">
       User: <span id="username"></span>
-      <button id="leave">Leave Room</button>
-      <p>Users: <span id="userCount"></span></p>
-      <p>
-        Controller: <span id="controller">---</span>
-        <button id="takeControl">Take Control</button>
-      </p>
-      <div id="video-area">
-        <iframe width="1736" height="986" src="https://www.youtube.com/embed/WMpkHdnv6ds" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+      <div>
+        <input type="text" id="videoInputID" />
+        <button id="videoInputIDBtn">submit</button>
       </div>
+      
     </div>
 
+    <div id="player"></div>
+
     <script>
-      var controller = null;
-      window.onload = function () {
-        if ($_("#name").value == "")
-          $_("#name").value = "user" + parseInt(99999 * Math.random());
+      const nameInput = document.querySelector("#name");
+      const userName = document.querySelector("#username");
+      const room = document.querySelector("#room");
+      const videoInputID = document.querySelector("#videoInputID");
+      const videoInputIDBtn = document.querySelector("#videoInputIDBtn");
+      let paused = null;
+      let conn = null;
+      let player = null;
 
-        var conn;
-        $_("#join").onclick = function () {
-          conn = new WebSocket("ws://localhost:8000/test");
-          $_("#username").innerHTML = $_("#name").value;
-          $_("#room").className = "active";
-          $_("#registration").className = "inactive";
-          var video = $_("video");
-          video.addEventListener(
-            "timeupdate",
-            function () {
-              if (iAmControlling()) conn.send(video.currentTime);
-            },
-            true
-          );
-          video.addEventListener(
-            "pause",
-            function () {
-              if (iAmControlling()) conn.send("pause " + video.currentTime);
-            },
-            true
-          );
-          conn.onmessage = function (ev) {
-            var matches;
-            if ((matches = ev.data.match(/^control (.+)$/))) {
-              $_("#controller").innerHTML = matches[1];
-            } else if ((matches = ev.data.match(/^userCount (.+)$/))) {
-              // $_("#userCount").innerHTML = matches[1];
-              document.getElementById("userCount").innerHTML = matches[1];
-            } else if ((matches = ev.data.match(/^pause (.+)$/))) {
-              video.currentTime = matches[1];
-              video.pause();
-            } else {
-              if (iAmControlling()) return;
-              var estimatedTimeOnMaster = parseInt(ev.data) + 1;
-              if (Math.abs(estimatedTimeOnMaster - video.currentTime) > 5)
-                video.currentTime = estimatedTimeOnMaster;
-              if (video.paused) video.play();
-            }
-          };
-          $_("#takeControl").onclick = function (ev) {
-            conn.send("control " + $_("#name").value);
-          };
-          $_("#leave").onclick = function () {
-            conn.close();
-            $_("#room").className = "inactive";
-            $_("#registration").className = "active";
-          };
-        };
+      conn = new WebSocket("ws://localhost:3000");
+
+      if (nameInput.value == "") {
+        nameInput.value = "user" + parseInt(99999 * Math.random());
+      }
+
+      var tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName("script")[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player("player", {
+          height: "390",
+          width: "640",
+          videoId: "XM6kMqDkQTY",
+          events: {
+            onReady: onPlayerReady,
+            onStateChange: onPlayerStateChange,
+          },
+        });
+      }
+
+      function onPlayerReady(event) {}
+
+      var done = false;
+      function onPlayerStateChange(event) {
+        console.log("onPlayerStateChange", event.data);
+        if (event.data === 2) {
+          conn.send("paused " + player.getCurrentTime());
+          paused = true;
+        } else if (event.data === 1) {
+          conn.send("start");
+          paused = false;
+        }
+      }
+
+      videoInputIDBtn.addEventListener("click", function () {
+        conn.send("videoID " + videoInputID.value);
+        player.loadVideoById(videoInputID.value, 0, "default");
+      });
+
+      conn.onmessage = function (ev) {
+        console.log("ev", ev);
+        var matches;
+        if ((matches = ev.data.match(/^videoID (.+)$/))) {
+          player.loadVideoById(matches[1], 0, "default");
+        }
+        if ((matches = ev.data === 'start')) {
+          console.log('get start');
+          player.playVideo();
+        }
+        if ((matches = ev.data.match(/^paused (.+)$/))) {
+          player.seekTo(matches[1]);
+          player.stopVideo();
+        } else {
+          var estimatedTimeOnMaster = parseInt(ev.data) + 1;
+          if (Math.abs(estimatedTimeOnMaster - player.getCurrentTime()) > 5)
+            player.seekTo(estimatedTimeOnMaster);
+        }
       };
-
-      function iAmControlling() {
-        return $_("#controller").innerHTML == $_("#name").value;
-      }
-
-      function $_(sel) {
-        return document.querySelector(sel);
-      }
     </script>
   </body>
 </html>
