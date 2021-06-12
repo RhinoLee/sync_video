@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Video Player</title>
     <style>
-      body, html {
+      body,
+      html {
         margin: 0;
         padding: 0;
         width: 100%;
@@ -46,7 +47,6 @@
         letter-spacing: 1px;
         text-transform: capitalize;
       }
-
     </style>
   </head>
   <body>
@@ -57,9 +57,10 @@
         <button id="videoInputIDBtn">submit</button>
       </div>
     </div>
-    
+
     <div class="player-wrap">
       <div id="player"></div>
+      <div>Current Time: <span id="time"></span></div>
     </div>
 
     <script>
@@ -70,6 +71,8 @@
       const videoInputIDBtn = document.querySelector("#videoInputIDBtn");
       let paused = null;
       let player = null;
+      let videotime = 0;
+      let done = false;
 
       // Youtube API
       var tag = document.createElement("script");
@@ -89,15 +92,39 @@
         });
       }
 
-      function onPlayerReady(event) {}
+      function onPlayerReady(event) {
+        event.target.playVideo();
+      }
       function onPlayerStateChange(event) {
-        // console.log("onPlayerStateChange", event.data);
-        if (event.data === 2) {
-          ws.send(`paused-${player.getCurrentTime()}`);
-          paused = true;
-        } else if (event.data === 1) {
-          ws.send(`start-${player.getCurrentTime()}`);
-          paused = false;
+        if (event.data == -1) {
+          console.log('unstarted');
+
+        } else if (event.data == 0) {
+          console.log('ended');
+
+        } else if (event.data == 1) {
+          console.log('playing');
+        } else if (event.data == 2) {
+          console.log('paused');
+        } else if (event.data == 3) {
+          console.log('buffering');
+        } else if (event.data == 5) {
+          console.log('cued');
+        }
+
+
+
+        // if (event.data === 2) {
+        // }
+        // if (event.data === 1) {
+        //   ws.send(`start-${player.getCurrentTime()}`);
+        //   paused = false;
+        // }
+      }
+
+      function onProgress(currentTime) {
+        if (currentTime > 20) {
+          console.log("the video reached 20 seconds!");
         }
       }
 
@@ -106,21 +133,25 @@
         player.loadVideoById(videoInputID.value, 0, "default");
       });
 
-      ws.onmessage = ({ data }) => {
+      function stopVideo() {
+        player.stopVideo();
+      }
 
-        if (data.split('-')[0] === 'videoID') {
-          console.log(data.split('-')[0], data.split('-')[1]);
-          player.loadVideoById(data.split('-')[1], 0, "default");
-        } 
-        else if (data.split('-')[0] === 'start') {
-          // player.seekTo(data.split('-')[1] === 'start');
-          console.log(data.split('-')[0], data.split('-')[1]);
+      ws.onmessage = ({ data }) => {
+        
+        if (data.split("-")[0] === "videoID") {
+
+          player.loadVideoById(data.split("-")[1], 0, "default");
+
+        } else if (data.split("-")[0] === "start") {
+
           player.playVideo();
-        } 
-        else if (data.split('-')[0] === 'paused') {
-          // player.seekTo(matches[1]);
-          console.log(data.split('-')[0], data.split('-')[1]);
+
+        } else if (data.split("-")[0] === "paused") {
+
           player.stopVideo();
+          player.seekTo(matches[1]);
+
         }
       };
     </script>

@@ -12,14 +12,15 @@ const wss = new Server({ server });
 
 wss.on('connection', (ws) => {
   console.log('server connection')
+  setInterval(() => {
+    wss.clients.forEach((client) => {
+      client.send(new Date().toTimeString());
 
-  wss.clients.forEach((client) => {
-    // client.send(new Date().toTimeString());
-    client.on('message', (data) => {
-      ws.send(data)
-    })
-
-  });
+      client.on('message', (data) => {
+        ws.send(data)
+      })
+    });
+  }, 10000);
 
   // ws.on('close', () => {
   //   ws.send("userCount " + --userCount);
