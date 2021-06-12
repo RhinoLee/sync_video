@@ -22,8 +22,8 @@ wss.on('connection', (ws) => {
     });
   }, 10000);
 
-  // ws.on('close', () => {
-  //   ws.send("userCount " + --userCount);
-  // })
+  ws.on('close', () => {
+    ws.send("ws close");
+  })
 });
 

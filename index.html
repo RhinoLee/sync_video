@@ -93,7 +93,7 @@
       }
 
       function onPlayerReady(event) {
-        event.target.playVideo();
+        player.playVideo();
       }
       function onPlayerStateChange(event) {
         if (event.data == -1) {
@@ -104,22 +104,16 @@
 
         } else if (event.data == 1) {
           console.log('playing');
+          ws.send(`start-${player.getCurrentTime()}`);
+
         } else if (event.data == 2) {
           console.log('paused');
+          ws.send(`paused-${player.getCurrentTime()}`);
         } else if (event.data == 3) {
           console.log('buffering');
         } else if (event.data == 5) {
           console.log('cued');
         }
-
-
-
-        // if (event.data === 2) {
-        // }
-        // if (event.data === 1) {
-        //   ws.send(`start-${player.getCurrentTime()}`);
-        //   paused = false;
-        // }
       }
 
       function onProgress(currentTime) {
@@ -133,14 +127,10 @@
         player.loadVideoById(videoInputID.value, 0, "default");
       });
 
-      function stopVideo() {
-        player.stopVideo();
-      }
-
       ws.onmessage = ({ data }) => {
         
         if (data.split("-")[0] === "videoID") {
-
+          console.log('videoID', data.split("-")[1]);
           player.loadVideoById(data.split("-")[1], 0, "default");
 
         } else if (data.split("-")[0] === "start") {
@@ -149,8 +139,8 @@
 
         } else if (data.split("-")[0] === "paused") {
 
-          player.stopVideo();
-          player.seekTo(matches[1]);
+          player.seekTo(data.split("-")[1]);
+          player.pauseVideo();
 
         }
       };
