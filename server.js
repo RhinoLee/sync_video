@@ -13,16 +13,16 @@ const wss = new Server({ server });
 wss.on('connection', (ws) => {
   console.log('server connection')
 
-  ws.send("userCount " + ++userCount);
+  wss.clients.forEach((client) => {
+    // client.send(new Date().toTimeString());
+    client.on('message', (data) => {
+      ws.send(data)
+    })
 
-  setInterval(() => {
-    wss.clients.forEach((client) => {
-      client.send(new Date().toTimeString());
-    });
-  }, 1000);
+  });
 
-  ws.on('close', () => {
-    ws.send("userCount " + --userCount);
-  })
+  // ws.on('close', () => {
+  //   ws.send("userCount " + --userCount);
+  // })
 });
 
