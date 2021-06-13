@@ -13,6 +13,12 @@
         width: 100%;
         height: 100%;
       }
+      .inactive {
+        display: none;
+      }
+      .active {
+        display: block;
+      }
       .player-wrap {
         position: relative;
         width: 100%;
@@ -30,7 +36,8 @@
         margin-top: 30px;
         margin-bottom: 50px;
       }
-      #videoInputID {
+      #videoInputID,
+      input {
         margin-left: 5px;
         padding: 10px 10px;
         border: 1px solid #7e7e7e;
@@ -50,35 +57,99 @@
     </style>
   </head>
   <body>
+    <div id="registration" class="active">
+      <div>
+        <label for="name">Username</label>
+        <input id="name" />
+        <button id="join">Join Room</button>
+      </div>
+    </div>
+
     <div id="room" class="inactive">
+      <div class="input-wrapper">
+        <div>
+          <span>UserName: </span>
+          <span id="userName"></span>
+        </div>
+
+        <div>
+          <span>UserCount: </span>
+          <span id="userCount"></span>
+        </div>
+        <div>
+          <span>Controller: </span>
+          <span id="controller">---</span>
+        </div>
+
+        <button id="takeControl">Take Control</button>
+      </div>
       <div class="input-wrapper">
         <span>Video ID</span>
         <input type="text" id="videoInputID" />
         <button id="videoInputIDBtn">submit</button>
       </div>
-    </div>
 
-    <div class="player-wrap">
-      <div id="player"></div>
-      <div>Current Time: <span id="time"></span></div>
+      <div class="player-wrap">
+        <div id="player"></div>
+        <div>Current Time: <span id="time"></span></div>
+      </div>
     </div>
 
     <script>
-      // const ws = new WebSocket("ws://localhost:3000");
-      ws = new WebSocket("wss://guarded-sierra-70219.herokuapp.com");
+      const HOST = location.origin.replace(/^http/, "ws");
+      const registration = document.querySelector("#registration");
       const room = document.querySelector("#room");
+      const name = document.querySelector("#name");
+      const userName = document.querySelector("#userName");
+      const userCount = document.querySelector("#userCount");
+      const join = document.querySelector("#join");
+      const controller = document.querySelector("#controller");
+      const takeControl = document.querySelector("#takeControl");
       const videoInputID = document.querySelector("#videoInputID");
       const videoInputIDBtn = document.querySelector("#videoInputIDBtn");
+      let ws = null;
       let paused = null;
       let player = null;
       let videotime = 0;
       let done = false;
 
-      // Youtube API
-      var tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      var firstScriptTag = document.getElementsByTagName("script")[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      if (name.value == "")
+        name.value = "user" + parseInt(99999 * Math.random());
+
+      join.addEventListener("click", function () {
+        ws = new WebSocket(HOST);
+        // Youtube API
+        var tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName("script")[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        // User Setting
+        userName.innerHTML = name.value;
+        room.classList.remove('inactive');
+        registration.classList.add('inactive');
+
+        // WS
+        ws.onmessage = ({ data }) => {
+          if (data.split("-")[0] === "videoID") {
+            console.log("videoID", data.split("-")[1]);
+            player.loadVideoById(data.split("-")[1], 0, "default");
+          } else if (data.split("-")[0] === "start") {
+            player.playVideo();
+          } else if (data.split("-")[0] === "paused") {
+            player.seekTo(data.split("-")[1]);
+            player.pauseVideo();
+          }
+        };
+
+        takeControl.addEventListener('click', function() {
+          ws.send("control " + name.value);
+        })
+
+        ws.addEventListener("error", function (event) {
+          console.log("WebSocket error: ", event);
+        });
+      });
 
       function onYouTubeIframeAPIReady() {
         player = new YT.Player("player", {
@@ -94,25 +165,24 @@
 
       function onPlayerReady(event) {
         player.playVideo();
+        player.pauseVideo();
       }
       function onPlayerStateChange(event) {
+        if (!iAmControlling) return;
         if (event.data == -1) {
-          console.log('unstarted');
-
+          console.log("unstarted");
         } else if (event.data == 0) {
-          console.log('ended');
-
+          console.log("ended");
         } else if (event.data == 1) {
-          console.log('playing');
+          console.log("playing");
           ws.send(`start-${player.getCurrentTime()}`);
-
         } else if (event.data == 2) {
-          console.log('paused');
+          console.log("paused");
           ws.send(`paused-${player.getCurrentTime()}`);
         } else if (event.data == 3) {
-          console.log('buffering');
+          console.log("buffering");
         } else if (event.data == 5) {
-          console.log('cued');
+          console.log("cued");
         }
       }
 
@@ -122,28 +192,14 @@
         }
       }
 
+      function iAmControlling() {
+        return controller.innerHTML === name.value;
+      }
+
       videoInputIDBtn.addEventListener("click", function () {
         ws.send(`videoID-${videoInputID.value}`);
         player.loadVideoById(videoInputID.value, 0, "default");
       });
-
-      ws.onmessage = ({ data }) => {
-        
-        if (data.split("-")[0] === "videoID") {
-          console.log('videoID', data.split("-")[1]);
-          player.loadVideoById(data.split("-")[1], 0, "default");
-
-        } else if (data.split("-")[0] === "start") {
-
-          player.playVideo();
-
-        } else if (data.split("-")[0] === "paused") {
-
-          player.seekTo(data.split("-")[1]);
-          player.pauseVideo();
-
-        }
-      };
     </script>
   </body>
 </html>
